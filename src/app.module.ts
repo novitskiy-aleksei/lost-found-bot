@@ -1,11 +1,11 @@
 import { Module, HttpModule, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { ConfigModule } from 'nestjs-config';
-import { HydratorService } from './connect/hydrator.service';
-import { ConnectProtocolMiddleware } from './connect/protocol.middleware';
-import { ConnectApiService } from './connect/api.service';
 import { BotResponseService } from './weather/bot-response.service';
 import { ApiService } from './weather/api.service';
+import { ConnectApiService } from './framework/api.service';
+import { HydratorService } from './framework/hydrator.service';
+import { ConnectProtocolMiddleware } from './framework/protocol.middleware';
 
 @Module({
   controllers: [AppController],

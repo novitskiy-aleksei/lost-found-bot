@@ -1,9 +1,9 @@
-import { Message } from '../connect/message';
 import { Injectable } from '@nestjs/common';
 import { ApiService } from './api.service';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { empty } from 'rxjs/internal/Observer';
+import { Message } from '../framework/message';
 
 @Injectable()
 export class BotResponseService {

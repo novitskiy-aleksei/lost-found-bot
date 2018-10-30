@@ -1,9 +1,9 @@
 import { Controller, Post, Body, Logger } from '@nestjs/common';
-import { ConnectApiService } from './connect/api.service';
-import { Message } from './connect/message';
 import { BotResponseService } from './weather/bot-response.service';
 import * as moment from 'moment';
 import { Subscription } from 'rxjs';
+import { ConnectApiService } from './framework/api.service';
+import { Message } from './framework/message';
 
 @Controller()
 export class AppController {
