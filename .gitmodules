@@ -1,0 +1,3 @@
+[submodule "src/connect/protocol"]
+	path = src/connect/protocol
+	url = git@git.ronzan.com:platform/protocol.git
