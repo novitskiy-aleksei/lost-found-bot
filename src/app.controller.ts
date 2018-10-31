@@ -1,9 +1,9 @@
 import { Controller, Post, Body, Logger } from '@nestjs/common';
 import { BotResponseService } from './weather/bot-response.service';
-import * as moment from 'moment';
 import { Subscription } from 'rxjs';
 import { ConnectApiService } from './framework/api.service';
 import { Message } from './framework/message';
+import { BotResponse } from './weather/bot-response';
 
 @Controller()
 export class AppController {
@@ -18,15 +18,26 @@ export class AppController {
   @Post()
   webhook(@Body() message: Message) {
     this.sendSub = this.botResponses.byCommand(message.message.payload, message)
-      .subscribe(botResponse => {
+      .subscribe((botResponse: BotResponse) => {
         this.api.call('im', {
           entityName: 'BotSendMessage',
           feedType: message.feedType,
           feedId: message.feedId,
+          userId: message.userId,
           message: {
             kind: 1,
-            payload: botResponse,
-            created: moment().unix(),
+            created: Date.now(),
+            payload: '',
+            inlineKeyboardMarkup: null,
+          },
+          replyKeyboardMarkup: {
+            buttonRows: [
+              {
+                buttons: [
+                  {text: '🌂 Send location', callbackData: '/sys_send_location'},
+                ],
+              },
+            ],
           },
         }).subscribe(() => this.sendSub.unsubscribe());
     });

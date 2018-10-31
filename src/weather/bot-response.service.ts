@@ -2,17 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { ApiService } from './api.service';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { empty } from 'rxjs/internal/Observer';
 import { Message } from '../framework/message';
+import { BotResponse } from './bot-response';
 
 @Injectable()
 export class BotResponseService {
 
-  constructor(private weather: ApiService) {
-  }
+  private response: BotResponse;
+
+  constructor(private weather: ApiService) {}
 
   byCommand(command: string, message: Message): Observable<any> {
     command = command.trim();
+    this.response = new BotResponse();
 
     if (command.startsWith('/start')) {
       return this.start(message);
@@ -21,23 +23,28 @@ export class BotResponseService {
     }
   }
 
-  start(message: Message): Observable<string> {
-    return of('Hello! Message me any city name and I\'ll show you forecast for it');
+  start(message: Message): Observable<BotResponse> {
+    this.response.text = 'Hello! Message me any city name and I\'ll show you forecast for it';
+
+    return of(this.response);
   }
 
-  getForCity(city: string): Observable<any> {
+  private getForCity(city: string): Observable<BotResponse> {
     return this.weather.nowByCity(city).pipe(
       map((response) => {
         response = response.data;
-        let r = 'So, here is the weather in ' + city + ':\n';
-        r += 'Temperature: ' + response.main.temp + 'K\n';
-        r += 'Pressure: ' + response.main.pressure + '\n';
-        response.weather.forEach(factor => r += `\n${factor.description}`);
-        r += '\n';
-        return r;
+        this.response.text = 'So, here is the weather in ' + city + ':\n';
+        this.response.text += 'Temperature: ' + response.main.temp + 'K\n';
+        this.response.text += 'Pressure: ' + response.main.pressure + '\n';
+        response.weather.forEach(factor => this.response.text += `\n${factor.description}`);
+        this.response.text += '\n';
+
+        return this.response;
       }),
       catchError((err, caught) => {
-        return of(err.response.data.message);
+        this.response.text = err.response.data.message;
+
+        return of(this.response);
       }),
     );
   }
