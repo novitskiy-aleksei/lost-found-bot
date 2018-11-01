@@ -37,7 +37,7 @@ export class WeatherBot extends AbstractBot {
       case Map.MessageKind.text:
         this.api.getCurrentByCity(message.payload).subscribe(weather => {
           const text = `Currently in ${weather.city}, ${weather.country}:\n` +
-            `${weather.tempInCelsius}°C / ${weather.tempInFahrenheit}F`;
+            `${weather.tempInCelsius}°C / ${weather.tempInFahrenheit}F, ${weather.description}`;
           this.send(new MessagePush(new TextMessage(text)), update).subscribe();
         });
         break;

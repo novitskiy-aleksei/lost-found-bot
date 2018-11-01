@@ -63,6 +63,6 @@ export class OpenWeatherService {
   }
 
   private kelvinToFahrenheit(temp) {
-    return Math.round(temp * 9.5 - 459.67);
+    return Math.round(temp * 9 / 5 - 459.67);
   }
 }
