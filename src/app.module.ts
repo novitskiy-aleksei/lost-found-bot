@@ -1,29 +1,22 @@
-import { Module, HttpModule, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { AppController } from './app.controller';
+import { WeatherBot } from './weather-bot';
+import { Module, HttpModule } from '@nestjs/common';
 import { ConfigModule } from 'nestjs-config';
-import { BotResponseService } from './weather/bot-response.service';
-import { ApiService } from './weather/api.service';
-import { ConnectApiService } from './framework/api.service';
-import { HydratorService } from './framework/hydrator.service';
-import { ConnectProtocolMiddleware } from './framework/protocol.middleware';
+import { FrameworkModule } from './framework/framework.module';
+import { OpenWeatherService } from 'services/open-weather.service';
+import { ProcessorLink } from 'framework/services/processor.service';
 
 @Module({
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    ConnectApiService,
-    BotResponseService,
-    ApiService,
-    HydratorService,
+    ProcessorLink,
+    OpenWeatherService,
+    WeatherBot,
   ],
   imports: [
     ConfigModule.load(),
     HttpModule,
+    FrameworkModule,
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(ConnectProtocolMiddleware)
-      .forRoutes(AppController);
-  }
+export class AppModule {
 }
