@@ -3,14 +3,7 @@ import { HttpService, Injectable } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { InjectConfig } from 'nestjs-config';
 import * as querystring from 'querystring';
-
-export class Weather {
-  city: string;
-  country: string;
-  tempInCelsius: number;
-  tempInFahrenheit: number;
-  description: string;
-}
+import { Weather } from '../models/weather';
 
 @Injectable()
 export class OpenWeatherService {
@@ -28,41 +21,20 @@ export class OpenWeatherService {
     }
   }
 
-  getCurrentByCity(city: string): Observable<Weather> {
-    return this.getForecastByCity(city).pipe(
-      map(response => {
-        const data = response.data;
-        return {
-          city: data.city.name,
-          country: data.city.country,
-          tempInCelsius: this.kelvinToCelsius(data.list[0].main.temp),
-          tempInFahrenheit: this.kelvinToFahrenheit(data.list[0].main.temp),
-          description: data.list[0].weather[0].main,
-        } as Weather;
-      }),
-      catchError((err, caught) => {
-        return of(null);
-      }),
-    );
-  }
-
-  private getForecastByCity(city: string): Observable<any> {
+  getForecastByCity(city: string): Observable<Weather | null> {
     return this.call('forecast', {q: city});
   }
 
-  private getWeatherByGeo(lat: number, lon: number): Observable<any> {
-    return this.call('weather', {lat, lon});
+  getForecastByGeo(lat: number, lon: number): Observable<Weather | null> {
+    return this.call('forecast', {lat, lon});
   }
 
-  private call(method, params) {
-    return this.http.get(`${this.url}/${method}?appid=${this.apiKey}&` + querystring.stringify(params));
-  }
-
-  private kelvinToCelsius(temp) {
-    return Math.round(temp - 273.15);
-  }
-
-  private kelvinToFahrenheit(temp) {
-    return Math.round(temp * 9 / 5 - 459.67);
+  private call(method, params): Observable<Weather | null> {
+    return this.http
+      .get(`${this.url}/${method}?appid=${this.apiKey}&` + querystring.stringify(params))
+      .pipe(
+        map((response: any) => new Weather(response.data)),
+        catchError((err, caught) => of(null)),
+      );
   }
 }
