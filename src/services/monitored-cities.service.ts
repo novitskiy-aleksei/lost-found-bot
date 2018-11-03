@@ -16,6 +16,11 @@ export class MonitoredCitiesService {
     return from(this.connection.manager.save(item));
   }
 
+  async remove(userId: string, city: string) {
+    const item = await this.repository.findOne({userId, city});
+    return this.connection.manager.remove(item);
+  }
+
   findAll(): Observable<MonitoredCitiesEntity[]> {
     return from(this.connection.manager.find(MonitoredCitiesEntity));
   }

@@ -67,6 +67,26 @@ export class WeatherBotService extends AbstractBot {
             ]),
           ), update).subscribe();
         });
+        break;
+      }
+      case 'unsubscribe': {
+        this.monitoredService.remove(update.userId, botAction.city).then(() => {
+          this.send(new MessageWithKeyboardPush(
+            new TextMessage(
+              `You unsubscribed from ${botAction.city} weather notifications`,
+              new InlineKeyboardMarkup(
+                [new InlineKeyboardButtonRow(
+                  [new InlineKeyboardButton(`Monitor ${botAction.city}'s weather`, `{"action": "monitor", "city": "${botAction.city}"}`)],
+                )],
+              ),
+            ),
+            new ReplyKeyboardMarkup([
+              new KeyboardButtonRow([
+                new KeyboardButton('🌂 Local forecast', true),
+              ]),
+            ]),
+          ), update).subscribe();
+        });
       }
     }
   }
@@ -104,6 +124,36 @@ export class WeatherBotService extends AbstractBot {
         });
         break;
     }
+  }
+
+  weatherChangeNotification(weather: Weather, entity: MonitoredCitiesEntity) {
+    // console.log(weather, entity);
+    if (!weather.now.badConditions()) {
+      return;
+    }
+
+    const credentials = {
+      feedType: 1,
+      userId: entity.userId,
+      feedId: entity.feedId,
+    } as Update;
+
+    this.send(new MessageWithKeyboardPush(
+      new TextMessage(
+        `Looks like it's ${weather.now.badConditions().description.toLowerCase()} in ${weather.city}. Be careful`,
+        new InlineKeyboardMarkup(
+          [new InlineKeyboardButtonRow(
+            [new InlineKeyboardButton(
+              `Unsubscribe from ${weather.city} weather notifications`, `{"action": "unsubscribe", "city": "${weather.city}"}`)],
+          )],
+        ),
+      ),
+      new ReplyKeyboardMarkup([
+        new KeyboardButtonRow([
+          new KeyboardButton('🌂 Local forecast', true),
+        ]),
+      ]),
+    ), credentials).subscribe();
   }
 
   private addMonitoredCity(city: string, userId: string, feedId: string): Observable<MonitoredCitiesEntity> {

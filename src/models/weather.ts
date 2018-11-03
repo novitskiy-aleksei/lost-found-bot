@@ -78,6 +78,10 @@ export class WeatherItem {
     return this.convertToFahrenheit(this.temp);
   }
 
+  badConditions(): WeatherDescription {
+    return this.weather.find(w => w.id < 700);
+  }
+
   private convertToCelsius(tempInK: number): number {
     return Math.round(tempInK - 273.15);
   }

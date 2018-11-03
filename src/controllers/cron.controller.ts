@@ -1,19 +1,25 @@
 import { Controller, Get } from '@nestjs/common';
 import { MonitoredCitiesService } from '../services/monitored-cities.service';
+import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';
+import { OpenWeatherService } from '../services/open-weather.service';
+import { WeatherBotService } from '../services/weather-bot.service';
 
 @Controller()
 export class CronController {
 
-  constructor(private monitorService: MonitoredCitiesService) {}
+  constructor(private monitorService: MonitoredCitiesService,
+              private openWeather: OpenWeatherService,
+              private botService: WeatherBotService) {}
 
   @Get('/cron/checkAll')
   checkAll() {
-    let response = [];
-    this.monitorService.findAll().subscribe(result => {
-      // console.log(result);
-      response = result;
+    this.monitorService.findMonitoredCityItems().subscribe((list: MonitoredCitiesEntity[]) => {
+      list.map(item =>
+        this.openWeather.getForecastByCity(item.city)
+          .subscribe(forecast => this.botService.weatherChangeNotification(forecast, item)),
+      );
     });
 
-    return this.monitorService.findMonitoredCityItems();
+    return 'Update started';
   }
 }
