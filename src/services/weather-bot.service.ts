@@ -52,22 +52,23 @@ export class WeatherBotService extends AbstractBot {
 
     switch (botAction.action) {
       case 'monitor': {
-        const item = new MonitoredCitiesEntity();
-        item.city = botAction.city;
-        item.createdAt = moment().unix();
-        item.feedId = update.feedId;
-        item.userId = update.userId;
+        const push = new MessageWithKeyboardPush();
+        const text = `${botAction.city} has been added to monitoring list.
+            Whenever there is a change which involves rain, storm, snowfall or anything worth attention, I will let you know.`;
 
-        this.monitoredService.add(item).subscribe(() => {
-          const text = `${botAction.city} has been added to monitoring list.
-              Whenever there is a change which involves rain, storm, snowfall or anything worth attention, I will let you know.`;
-          const message = new MessageWithKeyboardPush();
-          message.textMessage(text);
-          message.replyKeyboard()
-            .addRow([new KeyboardButton('🌂 Local forecast', true)]);
+        const exist = await this.monitoredService.findOne({city: botAction.city, userId: update.userId});
+        if (!exist) {
+          const item = new MonitoredCitiesEntity();
+          item.city = botAction.city;
+          item.createdAt = moment().unix();
+          item.feedId = update.feedId;
+          item.userId = update.userId;
 
-          this.send(message, update).subscribe();
-        });
+          this.monitoredService.add(item).subscribe();
+        }
+
+        push.textMessage(text);
+        this.send(push, update).subscribe();
         break;
       }
 
