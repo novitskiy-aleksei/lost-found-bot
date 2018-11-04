@@ -16,18 +16,31 @@ export class MonitoredCitiesService {
     return from(this.connection.manager.save(item));
   }
 
-  async remove(userId: string, city: string) {
+  async remove(userId: string, city: string): Promise<MonitoredCitiesEntity> {
     const item = await this.repository.findOne({userId, city});
-    return this.connection.manager.remove(item);
+    if (item) {
+      return this.connection.manager.remove(item);
+    }
   }
 
-  findAll(): Observable<MonitoredCitiesEntity[]> {
-    return from(this.connection.manager.find(MonitoredCitiesEntity));
+  async find(...args) {
+    return await this.repository.find(...args);
+  }
+
+  async findOne(...args) {
+    return await this.repository.findOne(...args);
   }
 
   findMonitoredCityItems(): Observable<MonitoredCitiesEntity[]> {
     return from(this.repository.createQueryBuilder('cities')
       .groupBy('city')
+      .getMany());
+  }
+
+  findCitySubscribers(city: string): Observable<MonitoredCitiesEntity[]> {
+    return from(this.repository.createQueryBuilder('subs')
+      .where(`subs.city = '${city}'`)
+      .groupBy('userId')
       .getMany());
   }
 

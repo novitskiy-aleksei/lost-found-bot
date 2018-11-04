@@ -3,6 +3,7 @@ import { MonitoredCitiesService } from '../services/monitored-cities.service';
 import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';
 import { OpenWeatherService } from '../services/open-weather.service';
 import { WeatherBotService } from '../services/weather-bot.service';
+import * as moment from 'moment';
 
 @Controller()
 export class CronController {
@@ -12,14 +13,16 @@ export class CronController {
               private botService: WeatherBotService) {}
 
   @Get('/cron/checkAll')
-  checkAll() {
-    this.monitorService.findMonitoredCityItems().subscribe((list: MonitoredCitiesEntity[]) => {
-      list.map(item =>
-        this.openWeather.getForecastByCity(item.city)
-          .subscribe(forecast => this.botService.weatherChangeNotification(forecast, item)),
-      );
-    });
+  async checkAll() {
+    const list = await this.monitorService.findMonitoredCityItems().toPromise();
+    for (const item of list) {
+      const forecast = await this.openWeather.getForecastByCity(item.city).toPromise();
+      const records = await this.monitorService.findCitySubscribers(item.city).toPromise();
+      records.forEach(record => {
+        this.botService.weatherChangeNotification(forecast, record);
+      });
+    }
 
-    return 'Update started';
+    return {started: moment().unix()};
   }
 }
