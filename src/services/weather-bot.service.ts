@@ -66,23 +66,20 @@ export class WeatherBotService extends AbstractBot {
           message.replyKeyboard()
             .addRow([new KeyboardButton('🌂 Local forecast', true)]);
 
-          this.send(message, update);
+          this.send(message, update).subscribe();
         });
         break;
       }
 
       case 'unsubscribe': {
         await this.monitoredService.remove(update.userId, botAction.city);
-        const message = new MessageWithKeyboardPush();
-        message.textMessage(`You unsubscribed from ${botAction.city} weather notifications`)
+        const push = new MessagePush();
+        push.textMessage(`\r\nYou unsubscribed from ${botAction.city} weather notifications\r\n`)
           .inlineKeyboard()
             .addRow([
               new InlineKeyboardButton(`Monitor ${botAction.city}'s weather`, `{"action": "monitor", "city": "${botAction.city}"}`),
             ]);
-        message.replyKeyboard()
-          .addRow([new KeyboardButton('🌂 Local forecast', true)]);
-
-        this.send(message, update);
+        this.send(push, update).subscribe();
       }
     }
   }
@@ -136,8 +133,12 @@ export class WeatherBotService extends AbstractBot {
     const msg = new MessageWithKeyboardPush();
     const description = weather.now.badConditions().description.toLowerCase();
     const buttonTitle = `Unsubscribe from ${weather.city} weather notifications`;
+    const text = `
+      We expecting ${description} in ${weather.city}. Please, pay attention.
+      Temperature in ${weather.city}: ${weather.now.tempInCelsius()}°C / ${weather.now.tempInFahrenheit()}F
+    `;
 
-    msg.textMessage(`Looks like it's ${description} in ${weather.city}. Be careful`)
+    msg.textMessage(text)
       .inlineKeyboard()
         .addRow([new InlineKeyboardButton(buttonTitle, `{"action": "unsubscribe", "city": "${weather.city}"}`)]);
     msg.replyKeyboard()
