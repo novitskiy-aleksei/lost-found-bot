@@ -1,13 +1,11 @@
+import { Push } from 'framework/models/push';
 import { AbstractBot } from '../framework/core/abstract-bot';
-import { MessageWithKeyboardPush, MessagePush } from '../framework/models/push';
-import { KeyboardButton } from 'framework/models/reply-keyboard-markup';
 import { Message } from '../framework/models/message';
 import * as Map from '../framework/map.json';
 import { OpenWeatherService } from './open-weather.service';
 import { Injectable } from '@nestjs/common';
 import { ProcessorLink } from '../framework/services/processor.service';
 import { Weather } from '../models/weather';
-import { InlineKeyboardButton } from '../framework/models/inline-keyboard-markup';
 import { Command } from '../framework/core/command';
 import { CallbackQuery, Update } from '../framework/models/update';
 import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';
@@ -32,18 +30,16 @@ export class WeatherBotService extends AbstractBot {
   onCommand(command, update) {
     switch (command) {
       case '/start':
-        const msg = new MessageWithKeyboardPush();
         const text = 'Hi! My name is WeatherBot, I tell weather. ☂️☀️⛅️\r\n' +
           'Use the buttonboard to request the weather forecast for your current location or specify a city by name.\r\n' +
           'For better results please narrow your search by adding a postal code or a country.';
-
-        msg.textMessage(text);
-        msg.replyKeyboard()
-          .addRow([
-            new KeyboardButton('🌂 Local forecast', true),
+        const push = this.createPush()
+          .setTextMessage(text)
+          .setReplyKeyboard([
+            [{text: '🌂 Local forecast', requestLocation: true}],
           ])
         ;
-        this.send(msg, update).subscribe();
+        this.send(push, update).subscribe();
     }
   }
 
@@ -52,86 +48,76 @@ export class WeatherBotService extends AbstractBot {
 
     switch (botAction.action) {
       case 'monitor': {
-        const push = new MessageWithKeyboardPush();
         const text = `${botAction.city} has been added to monitoring list.
             Whenever there is a change which involves rain, storm, snowfall or anything worth attention, I will let you know.`;
 
-        const exist = await this.monitoredService.findOne({city: botAction.city, userId: update.userId});
-        if (!exist) {
-          const item = new MonitoredCitiesEntity();
-          item.city = botAction.city;
-          item.createdAt = moment().unix();
-          item.feedId = update.feedId;
-          item.userId = update.userId;
+        this.monitoredService.findSubscription(botAction.city, update.userId).subscribe(subscription => {
+          if (!subscription) {
+            const item = new MonitoredCitiesEntity();
+            item.city = botAction.city;
+            item.createdAt = moment().unix();
+            item.feedId = update.feedId;
+            item.userId = update.userId;
+            this.monitoredService.add(item).subscribe();
+          }
+        });
 
-          this.monitoredService.add(item).subscribe();
-        }
-
-        push.textMessage(text);
+        const push = this.createPush().setTextMessage(text);
         this.send(push, update).subscribe();
         break;
       }
 
       case 'unsubscribe': {
-        await this.monitoredService.remove(update.userId, botAction.city);
-        const push = new MessagePush();
-        push.textMessage(`\r\nYou unsubscribed from ${botAction.city} weather notifications\r\n`)
-          .inlineKeyboard()
-            .addRow([
-              new InlineKeyboardButton(`Monitor ${botAction.city}'s weather`, `{"action": "monitor", "city": "${botAction.city}"}`),
-            ]);
-        this.send(push, update).subscribe();
+        this.monitoredService.remove(botAction.city, update.userId).subscribe(() => {
+          const push = this.createPush()
+          .setTextMessage(`\r\nYou unsubscribed from ${botAction.city} weather notifications\r\n`, [
+            [{text: `Monitor ${botAction.city}'s weather`, callbackData: `{"action": "monitor", "city": "${botAction.city}"}`}],
+          ]);
+          this.send(push, update).subscribe();
+        });
       }
     }
   }
 
   async onMessage(message: Message, update) {
+    let push: Push;
     switch (message.kind) {
       case Map.MessageKind.text:
         const weather = await this.api.getForecastByCity(message.payload).toPromise();
-        const msg = new MessagePush();
-        const text404 = 'City not found';
-        const text = weather ? this.formatCityResponse(weather) : text404;
-        msg.textMessage(text);
+        push = this.createPush();
 
         if (weather) {
-          // if already subscribed - don't show button
-          const exist = await this.monitoredService.findOne({city: weather.city, userId: update.userId});
-          if (!exist) {
-            msg.textMessage().inlineKeyboard()
-              .addRow([
-                new InlineKeyboardButton(`Monitor ${weather.city}'s weather`,
-                  `{"action": "monitor", "city": "${weather.city}"}`),
-              ]);
+          const isSubscribed = await this.monitoredService.findSubscription(weather.city, update.userId);
+          if (!isSubscribed) {
+            push.setTextMessage(this.formatCityResponse(weather), [
+              [{text: `Monitor ${weather.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather.city}"}`}],
+            ]);
           } else {
-            msg.textMessage().text(this.formatCityResponse(weather, false));
+            push.setTextMessage(this.formatCityResponse(weather, false));
           }
+        } else {
+          push.setTextMessage('City not found');
         }
 
-        this.send(msg, update).subscribe();
+        this.send(push, update).subscribe();
         break;
 
       case Map.MessageKind.map:
         const weather1 = await this.api.getForecastByGeo(message.geo[0], message.geo[1]).toPromise();
-        const msg1 = new MessagePush();
-        msg1.textMessage(this.formatCityResponse(weather1))
-          .inlineKeyboard()
-          .addRow([
-            new InlineKeyboardButton(`Monitor ${weather1.city}'s weather`,
-              `{"action": "monitor", "city": "${weather1.city}"}`),
-          ]);
-        this.send(msg1, update).subscribe();
+        push = this.createPush().setTextMessage(this.formatCityResponse(weather1), [
+          [{text: `Monitor ${weather1.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather1.city}"}`}],
+        ]);
+        this.send(push, update).subscribe();
         break;
     }
   }
 
   weatherChangeNotification(weather: Weather, entity: MonitoredCitiesEntity) {
-    if (!weather.now.badConditions()) {
-      return;
-    }
+    // if (!weather.now.badConditions()) {
+    //   return;
+    // }
 
     const credentials = {feedType: 1, userId: entity.userId, feedId: entity.feedId} as Update;
-    const msg = new MessageWithKeyboardPush();
     const description = weather.now.badConditions().description.toLowerCase();
     const buttonTitle = `Unsubscribe from ${weather.city} weather notifications`;
     const text = `
@@ -139,13 +125,15 @@ export class WeatherBotService extends AbstractBot {
       Temperature in ${weather.city}: ${weather.now.tempInCelsius()}°C / ${weather.now.tempInFahrenheit()}F
     `;
 
-    msg.textMessage(text)
-      .inlineKeyboard()
-        .addRow([new InlineKeyboardButton(buttonTitle, `{"action": "unsubscribe", "city": "${weather.city}"}`)]);
-    msg.replyKeyboard()
-      .addRow([new KeyboardButton('🌂 Local forecast', true)]);
+    const push = this.createPush()
+      .setTextMessage(text, [
+        [{text: buttonTitle, callbackData: `{"action": "unsubscribe", "city": "${weather.city}"}`}],
+      ])
+      .setReplyKeyboard([
+        [{text: '🌂 Local forecast', requestLocation: true}],
+      ]);
 
-    this.send(msg, credentials).subscribe();
+    this.send(push, credentials).subscribe();
   }
 
   private formatCityResponse(weather: Weather, subscribeNote = true): string {
