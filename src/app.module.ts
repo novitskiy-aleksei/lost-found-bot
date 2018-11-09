@@ -1,16 +1,13 @@
+import { config } from 'dotenv';
 import { WeatherBotService } from './services/weather-bot.service';
 import { Module, HttpModule } from '@nestjs/common';
-import { ConfigModule } from 'nestjs-config';
 import { FrameworkModule } from './framework/framework.module';
-import { OpenWeatherService } from 'services/open-weather.service';
-import { ProcessorLink } from 'framework/services/processor.service';
+import { OpenWeatherService } from './services/open-weather.service';
+import { ProcessorLink } from './framework/services/processor.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MonitoredCitiesService } from './services/monitored-cities.service';
-
-// immediately import dotenv configuration to use it for DB
-import { config } from 'dotenv';
 import { CronController } from './controllers/cron.controller';
-import { MonitoredCitiesEntity } from './entities/monitored-cities.entity';
+
 config();
 
 @Module({
@@ -24,7 +21,6 @@ config();
     MonitoredCitiesService,
   ],
   imports: [
-    ConfigModule.load(),
     HttpModule,
     FrameworkModule,
     TypeOrmModule.forRoot({
@@ -33,10 +29,9 @@ config();
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,
       database: process.env.DB_DATABASE_NAME,
-      entities: ['src/**/**.entity{.ts,.js}'],
-      synchronize: true,
-      },
-    ),
+      entities: [(process.env.NODE_ENV === 'development' ? 'src' : 'dist') + '/**/**.entity{.ts,.js}'],
+      synchronize: process.env.NODE_ENV === 'development',
+    }),
   ],
 })
 export class AppModule {

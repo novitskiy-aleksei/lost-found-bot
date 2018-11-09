@@ -25,11 +25,11 @@
     "@nestjs/typeorm": "^5.2.2",
     "moment": "^2.22.2",
     "mongodb": "^3.1.8",
-    "nestjs-config": "^1.2.6",
     "reflect-metadata": "^0.1.12",
     "rxjs": "^6.2.2",
     "typeorm": "^0.2.8",
-    "typescript": "^3.0.1"
+    "typescript": "^3.0.1",
+    "hydrator": "git+ssh://git@git.ronzan.com:platform/hydrator.git"
   },
   "devDependencies": {
     "@nestjs/testing": "^5.1.0",

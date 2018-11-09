@@ -10,12 +10,12 @@ export class OpenWeatherService {
   private readonly url = 'http://api.openweathermap.org/data/2.5';
   private apiKey: string;
 
-  constructor(@InjectConfig() private config, private http: HttpService) {
+  constructor(private http: HttpService) {
     this.configureCredentials();
   }
 
   configureCredentials() {
-    this.apiKey = this.config.get('app.openWeatherApiKey');
+    this.apiKey = process.env.OPENWEATHER_API_KEY;
     if (!this.apiKey) {
       throw new Error('No key provided for open weather api');
     }
