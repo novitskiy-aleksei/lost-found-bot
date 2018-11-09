@@ -1,7 +1,6 @@
 import { catchError, map } from 'rxjs/operators';
 import { HttpService, Injectable } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
-import { InjectConfig } from 'nestjs-config';
 import * as querystring from 'querystring';
 import { Weather } from '../models/weather';
 
