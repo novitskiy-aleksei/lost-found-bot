@@ -22,9 +22,7 @@ export class WeatherBotService extends AbstractBot {
   }
 
   getCommands(): Command[] {
-    return [
-      new Command('/start', ''),
-    ];
+    return [];
   }
 
   onCommand(command, update) {
