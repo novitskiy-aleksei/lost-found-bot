@@ -1,8 +1,8 @@
 import { config } from 'dotenv';
-import { WeatherBotService } from './services/weather-bot.service';
+import { LostNFoundService } from './services/lost-n-found.service';
 import { Module, HttpModule } from '@nestjs/common';
 import { FrameworkModule } from './framework/framework.module';
-import { OpenWeatherService } from './services/open-weather.service';
+import { MyPetsService } from './services/my-pets.service';
 import { ProcessorLink } from './framework/services/processor.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MonitoredCitiesService } from './services/monitored-cities.service';
@@ -16,8 +16,8 @@ config();
   ],
   providers: [
     ProcessorLink,
-    OpenWeatherService,
-    WeatherBotService,
+    MyPetsService,
+    LostNFoundService,
     MonitoredCitiesService,
   ],
   imports: [

@@ -2,10 +2,10 @@ import { Push } from 'framework/models/push';
 import { AbstractBot } from '../framework/core/abstract-bot';
 import { Message } from '../framework/models/message';
 import * as Map from '../framework/map.json';
-import { OpenWeatherService } from './open-weather.service';
+import { MyPetsService } from './my-pets.service';
 import { Injectable } from '@nestjs/common';
 import { ProcessorLink } from '../framework/services/processor.service';
-import { Weather } from '../models/weather';
+import { Pet } from '../models/pet';
 import { Command } from '../framework/core/command';
 import { CallbackQuery, Update } from '../framework/models/update';
 import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';
@@ -13,10 +13,10 @@ import * as moment from 'moment';
 import { MonitoredCitiesService } from './monitored-cities.service';
 
 @Injectable()
-export class WeatherBotService extends AbstractBot {
+export class LostNFoundService extends AbstractBot {
 
   constructor(processorLink: ProcessorLink,
-              private api: OpenWeatherService,
+              private api: MyPetsService,
               private monitoredService: MonitoredCitiesService) {
     super(processorLink);
   }
@@ -28,14 +28,10 @@ export class WeatherBotService extends AbstractBot {
   onCommand(command, update) {
     switch (command) {
       case '/start':
-        const text = 'Hi! My name is WeatherBot, I tell weather. ☂️☀️⛅️\r\n' +
-          'Use the buttonboard to request the weather forecast for your current location or specify a city by name.\r\n' +
-          'For better results please narrow your search by adding a postal code or a country.';
+        const text = 'Hi! My name is Lost\'n\'Found bot, I will help find to your pet️\r\n';
         const push = this.createPush()
           .setTextMessage(text)
-          .setReplyKeyboard([
-            [{text: '🌂 Local forecast', requestLocation: true}],
-          ])
+          .setReplyKeyboard([[{text: 'Select which pet is lost'}]])
         ;
         this.send(push, update).subscribe();
     }
@@ -81,36 +77,39 @@ export class WeatherBotService extends AbstractBot {
     let push: Push;
     switch (message.kind) {
       case Map.MessageKind.text:
-        const weather = await this.api.getForecastByCity(message.payload).toPromise();
+        if (message.payload === 'Select which pet is lost') {
+          const pets = await this.api.getMyPets();
+          // todo
+        }
         push = this.createPush();
 
-        if (weather) {
-          const isSubscribed = await this.monitoredService.findSubscription(weather.city, update.userId);
-          if (!isSubscribed) {
-            push.setTextMessage(this.formatCityResponse(weather), [
-              [{text: `Monitor ${weather.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather.city}"}`}],
-            ]);
-          } else {
-            push.setTextMessage(this.formatCityResponse(weather, false));
-          }
-        } else {
-          push.setTextMessage('City not found');
-        }
+        // if (weather) {
+        //   const isSubscribed = await this.monitoredService.findSubscription(weather.city, update.userId);
+        //   if (!isSubscribed) {
+        //     push.setTextMessage(this.formatCityResponse(weather), [
+        //       [{text: `Monitor ${weather.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather.city}"}`}],
+        //     ]);
+          // } else {
+          //   push.setTextMessage(this.formatCityResponse(weather, false));
+          // }
+        // } else {
+        //   push.setTextMessage('City not found');
+        // }
 
         this.send(push, update).subscribe();
         break;
 
       case Map.MessageKind.map:
-        const weather1 = await this.api.getForecastByGeo(message.geo[0], message.geo[1]).toPromise();
-        push = this.createPush().setTextMessage(this.formatCityResponse(weather1), [
-          [{text: `Monitor ${weather1.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather1.city}"}`}],
-        ]);
-        this.send(push, update).subscribe();
-        break;
+        // const weather1 = await this.api.getForecastByGeo(message.geo[0], message.geo[1]).toPromise();
+        // push = this.createPush().setTextMessage(this.formatCityResponse(weather1), [
+        //   [{text: `Monitor ${weather1.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather1.city}"}`}],
+        // ]);
+        // this.send(push, update).subscribe();
+        // break;
     }
   }
 
-  weatherChangeNotification(weather: Weather, entity: MonitoredCitiesEntity) {
+  weatherChangeNotification(weather: Pet, entity: MonitoredCitiesEntity) {
     // if (!weather.now.badConditions()) {
     //   return;
     // }
@@ -134,7 +133,7 @@ export class WeatherBotService extends AbstractBot {
     this.send(push, credentials).subscribe();
   }
 
-  private formatCityResponse(weather: Weather, subscribeNote = true): string {
+  private formatCityResponse(weather: Pet, subscribeNote = true): string {
     let text =
       `Currently in ${weather.city}, ${weather.country}:
       ${weather.now.tempInCelsius()}°C / ${weather.now.tempInFahrenheit()}F`;

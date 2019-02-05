@@ -1,4 +1,3 @@
-import { map } from 'rxjs/operators';
 import { Connection, MongoEntityManager } from 'typeorm';
 import { InjectConnection } from '@nestjs/typeorm';
 import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';

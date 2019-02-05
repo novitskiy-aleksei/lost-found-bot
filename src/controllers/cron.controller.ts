@@ -1,14 +1,14 @@
 import { Controller, Get, Logger } from '@nestjs/common';
 import { MonitoredCitiesService } from '../services/monitored-cities.service';
-import { OpenWeatherService } from '../services/open-weather.service';
-import { WeatherBotService } from '../services/weather-bot.service';
+import { MyPetsService } from '../services/my-pets.service';
+import { LostNFoundService } from '../services/lost-n-found.service';
 import * as moment from 'moment';
 
 @Controller()
 export class CronController {
   constructor(private monitorService: MonitoredCitiesService,
-              private openWeather: OpenWeatherService,
-              private botService: WeatherBotService) {}
+              private openWeather: MyPetsService,
+              private botService: LostNFoundService) {}
 
   @Get('/cron/checkAll')
   async checkAll() {

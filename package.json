@@ -1,7 +1,7 @@
 {
-  "name": "weather-bot",
+  "name": "lostnfound-bot",
   "version": "0.0.1",
-  "description": "Weather bot for Connect Platform",
+  "description": "Lost'n'Found bot for Connect Platform",
   "author": "",
   "license": "MIT",
   "scripts": {
