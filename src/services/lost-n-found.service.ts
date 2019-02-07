@@ -7,13 +7,18 @@ import { Injectable } from '@nestjs/common';
 import { ProcessorLink } from '../framework/services/processor.service';
 import { Pet } from '../models/pet';
 import { Command } from '../framework/core/command';
-import { CallbackQuery, Update } from '../framework/models/update';
+import { CallbackQuery, ChosenInlineResult, InlineQuery, Update } from '../framework/models/update';
 import { MonitoredCitiesEntity } from '../entities/monitored-cities.entity';
 import * as moment from 'moment';
 import { MonitoredCitiesService } from './monitored-cities.service';
+import { InlineQueryResultArticle } from '../framework/models/inline-query-result';
+import { text } from 'body-parser';
 
 @Injectable()
 export class LostNFoundService extends AbstractBot {
+
+  // todo: remove this!
+  private lost = false;
 
   constructor(processorLink: ProcessorLink,
               private api: MyPetsService,
@@ -22,66 +27,80 @@ export class LostNFoundService extends AbstractBot {
   }
 
   getCommands(): Command[] {
-    return [];
+    return [new Command('/start', '')];
   }
 
   onCommand(command, update) {
     switch (command) {
       case '/start':
-        const text = 'Hi! My name is Lost\'n\'Found bot, I will help find to your pet️\r\n';
+        const txt = 'Hi! My name is Lost\'n\'Found bot, I will help find to your pet️\r\n';
         const push = this.createPush()
-          .setTextMessage(text)
-          .setReplyKeyboard([[{text: 'Select which pet is lost'}]])
+          .setTextMessage(txt, [
+            [{text: 'Select which pet is lost', callbackData: `{"action": "pet_list"}`}],
+            // [{text: 'I found/saw pet', callbackData: `{"action": "pet_found"}`}],
+          ])
         ;
         this.send(push, update).subscribe();
     }
   }
 
   async onCallbackQuery(query: CallbackQuery, update: Update) {
-    const botAction: {action: string, city: string} = JSON.parse(query.data);
+    const botAction: {action: string, value: string} = JSON.parse(query.data);
 
     switch (botAction.action) {
-      case 'monitor': {
-        const text = `${botAction.city} has been added to monitoring list.
-            Whenever there is a change which involves rain, storm, snowfall or anything worth attention, I will let you know.`;
-
-        this.monitoredService.findSubscription(botAction.city, update.userId).subscribe(subscription => {
-          if (!subscription) {
-            const item = new MonitoredCitiesEntity();
-            item.city = botAction.city;
-            item.createdAt = moment().unix();
-            item.feedId = update.feedId;
-            item.userId = update.userId;
-            this.monitoredService.add(item).subscribe();
-          }
-        });
-
-        const push = this.createPush().setTextMessage(text);
+      case 'pet_list': {
+        this.lost = false;
+        const petList = await this.api.getMyPets().toPromise();
+        const push = this.createPush()
+        .setTextMessage(
+          `\r\nOh no! I hope we will find him. Please, select lost pet card\r\n`,
+          [
+            petList.map(pet => ({
+              text: pet.name,
+              callbackData: `{"action": "pet_select", "value": "${pet.id}"}`,
+            })),
+          ],
+        );
         this.send(push, update).subscribe();
         break;
       }
 
-      case 'unsubscribe': {
-        this.monitoredService.remove(botAction.city, update.userId).subscribe(() => {
-          const push = this.createPush()
-          .setTextMessage(`\r\nYou unsubscribed from ${botAction.city} weather notifications\r\n`, [
-            [{text: `Monitor ${botAction.city}'s weather`, callbackData: `{"action": "monitor", "city": "${botAction.city}"}`}],
-          ]);
-          this.send(push, update).subscribe();
-        });
+      case 'pet_select': {
+        const petId = botAction.value;
+        // todo: save petId
+
+        const push = this.createPush()
+          .setTextMessage(`\r\nThank you. Where it was? Please send me map location\r\n`);
+        this.send(push, update).subscribe();
+        break;
       }
+
+      case 'pet_found': {
+        this.lost = true;
+        const push = this.createPush()
+          .setTextMessage(`\r\nGreat! Thank you! How it looks like? Send his picture, please\r\n`);
+        this.send(push, update).subscribe();
+        break;
+      }
+
+      // case 'pet_found': {
+      //   const push = this.createPush()
+      //     .setTextMessage(`\r\nThank you. Where it was? Please send me map location\r\n`);
+      //   this.send(push, update).subscribe();
+      //   break;
+      // }
     }
   }
 
   async onMessage(message: Message, update) {
     let push: Push;
+    // console.log(message, update);
     switch (message.kind) {
-      case Map.MessageKind.text:
-        if (message.payload === 'Select which pet is lost') {
-          const pets = await this.api.getMyPets();
-          // todo
-        }
-        push = this.createPush();
+      // case Map.MessageKind.text:
+        // if (message.payload === 'Select which pet is lost') {
+        //   const pets = await this.api.getMyPets();
+        // }
+        // push = this.createPush();
 
         // if (weather) {
         //   const isSubscribed = await this.monitoredService.findSubscription(weather.city, update.userId);
@@ -96,61 +115,27 @@ export class LostNFoundService extends AbstractBot {
         //   push.setTextMessage('City not found');
         // }
 
-        this.send(push, update).subscribe();
-        break;
-
-      case Map.MessageKind.map:
-        // const weather1 = await this.api.getForecastByGeo(message.geo[0], message.geo[1]).toPromise();
-        // push = this.createPush().setTextMessage(this.formatCityResponse(weather1), [
-        //   [{text: `Monitor ${weather1.city}'s weather`, callbackData: `{"action": "monitor", "city": "${weather1.city}"}`}],
-        // ]);
         // this.send(push, update).subscribe();
         // break;
+      // case Map.MessageKind.image: {
+      //   push = this.createPush().setTextMessage(
+      //     'Thank you. Where do you find him? Send me map location',
+      //   );
+      //   this.send(push, update).subscribe();
+      //   break;
+      // }
+
+      case Map.MessageKind.map:
+        const messageText = 'Ok, I will send notifications to users in that area. Together we will find him!';
+        // if (!this.lost) {
+        //   messageText = 'Thx for helping! We will try to contact his owners';
+        // }
+
+        // todo: save message.geo
+        push = this.createPush().setTextMessage(messageText);
+        this.send(push, update).subscribe();
+        break;
     }
   }
 
-  weatherChangeNotification(weather: Pet, entity: MonitoredCitiesEntity) {
-    // if (!weather.now.badConditions()) {
-    //   return;
-    // }
-
-    const credentials = {feedType: 1, userId: entity.userId, feedId: entity.feedId} as Update;
-    const description = weather.now.badConditions().description.toLowerCase();
-    const buttonTitle = `Unsubscribe from ${weather.city} weather notifications`;
-    const text = `
-      We expecting ${description} in ${weather.city}. Please, pay attention.
-      Temperature in ${weather.city}: ${weather.now.tempInCelsius()}°C / ${weather.now.tempInFahrenheit()}F
-    `;
-
-    const push = this.createPush()
-      .setTextMessage(text, [
-        [{text: buttonTitle, callbackData: `{"action": "unsubscribe", "city": "${weather.city}"}`}],
-      ])
-      .setReplyKeyboard([
-        [{text: '🌂 Local forecast', requestLocation: true}],
-      ]);
-
-    this.send(push, credentials).subscribe();
-  }
-
-  private formatCityResponse(weather: Pet, subscribeNote = true): string {
-    let text =
-      `Currently in ${weather.city}, ${weather.country}:
-      ${weather.now.tempInCelsius()}°C / ${weather.now.tempInFahrenheit()}F`;
-    text += weather.now.weather.map(w => ', ' + w.description);
-
-    const tomorrow = weather.forecastForTomorrow();
-    if (tomorrow) {
-      text += `\n
-        Tommorow at noon:
-        ${tomorrow.tempInCelsius()}°C / ${tomorrow.tempInFahrenheit()}F`;
-      text += tomorrow.weather.map(w => ', ' + w.description);
-    }
-
-    if (subscribeNote) {
-      text += `\n\nTo monitor this location for sudden weather changes click the button below:`;
-    }
-
-    return text;
-  }
 }

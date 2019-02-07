@@ -14,10 +14,10 @@ export class CronController {
   async checkAll() {
     const cities = await this.monitorService.findMonitoredCityItems().toPromise();
     for (const city of cities) {
-      const forecast = await this.openWeather.getForecastByCity(city).toPromise();
+      // const forecast = await this.openWeather.getForecastByCity(city).toPromise();
       const records = await this.monitorService.findCitySubscribers(city).toPromise();
       records.forEach(record => {
-        this.botService.weatherChangeNotification(forecast, record);
+        // this.botService.weatherChangeNotification(forecast, record);
       });
     }
 
